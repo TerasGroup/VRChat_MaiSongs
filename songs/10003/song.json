@@ -9,11 +9,13 @@
   "tags": [],
   "media": {
     "audio": {
-      "url": "https://raw.githubusercontent.com/TerasGroup/VRChat_MaiSongs/main/media/audio/10003.mp3"
+      "url": "https://raw.githubusercontent.com/TerasGroup/VRChat_MaiSongs/main/media/audio/10003.mp3",
+      "path": "media/audio/10003.mp3"
     },
     "background": {
       "type": "video",
-      "url": "https://raw.githubusercontent.com/TerasGroup/VRChat_MaiSongs/main/media/backgrounds/10003.mp4"
+      "url": "https://raw.githubusercontent.com/TerasGroup/VRChat_MaiSongs/main/media/backgrounds/10003.mp4",
+      "path": "media/backgrounds/10003.mp4"
     }
   },
   "charts": {
@@ -29,5 +31,6 @@
       "designer": "fullower",
       "version": 1
     }
-  }
+  },
+  "runtimeSlot": 2
 }
