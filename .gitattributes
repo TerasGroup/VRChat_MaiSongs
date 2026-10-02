@@ -6,3 +6,16 @@
 *.yml text eol=lf
 *.md text eol=lf
 *.sig binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.mp4 binary
+*.webm binary
+*.mkv binary
+*.avi binary
+*.mov binary
+*.mp3 binary
+*.ogg binary
+*.wav binary
