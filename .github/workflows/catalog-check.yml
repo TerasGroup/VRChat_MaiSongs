@@ -25,3 +25,6 @@ jobs:
 
       - name: Check catalog integrity and freshness
         run: npm run catalog:check
+
+      - name: Build runtime-slot Pages artifact
+        run: npm run pages:build
