@@ -4,6 +4,7 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 using VRC.SDKBase;
+using TerasGroup.VRChatMai;
 
 namespace TerasGroup.VRChatMai.Editor
 {
