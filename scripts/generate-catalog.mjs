@@ -8,6 +8,7 @@ const REPO_CONFIG_PATH = path.join(ROOT_DIR, "repo.config.json");
 const SONGS_SCHEMA_PATH = path.join(ROOT_DIR, "schemas", "songs.schema.json");
 const SONG_SOURCE_SCHEMA_PATH = path.join(ROOT_DIR, "schemas", "song-source.schema.json");
 const TARGET_SONGS_JSON_PATH = path.join(ROOT_DIR, "songs.json");
+const TARGET_RUNTIME_REGISTRY_PATH = path.join(ROOT_DIR, "runtime-url-registry.json");
 
 const isCheckMode = process.argv.includes("--check");
 
@@ -24,10 +25,10 @@ async function initValidator() {
     const songSourceSchema = JSON.parse(fs.readFileSync(SONG_SOURCE_SCHEMA_PATH, "utf8"));
     const songsSchema = JSON.parse(fs.readFileSync(SONGS_SCHEMA_PATH, "utf8"));
 
-    const validateSongSource = ajv.compile(songSourceSchema);
-    const validateCatalog = ajv.compile(songsSchema);
-
-    return { validateSongSource, validateCatalog };
+    return {
+      validateSongSource: ajv.compile(songSourceSchema),
+      validateCatalog: ajv.compile(songsSchema),
+    };
   } catch (err) {
     console.warn("WARNING: Schema validation disabled:", err.message);
     return null;
@@ -36,6 +37,31 @@ async function initValidator() {
 
 function computeSha256(buffer) {
   return crypto.createHash("sha256").update(buffer).digest("hex");
+}
+
+function normalizeExt(value) {
+  const ext = String(value || "").toLowerCase();
+  return ext.startsWith(".") ? ext : `.${ext}`;
+}
+
+function safeRepoPath(relPath, label) {
+  if (!relPath || path.isAbsolute(relPath) || relPath.includes("\\")) {
+    throw new Error(`${label} must be a forward-slash repository-relative path, got "${relPath}".`);
+  }
+  const full = path.resolve(ROOT_DIR, relPath);
+  const rootPrefix = ROOT_DIR.endsWith(path.sep) ? ROOT_DIR : ROOT_DIR + path.sep;
+  if (full !== ROOT_DIR && !full.startsWith(rootPrefix)) {
+    throw new Error(`${label} escapes the repository root: "${relPath}".`);
+  }
+  return full;
+}
+
+function requireFile(relPath, label) {
+  const full = safeRepoPath(relPath, label);
+  if (!fs.existsSync(full) || !fs.statSync(full).isFile()) {
+    throw new Error(`${label} does not exist: "${relPath}".`);
+  }
+  return full;
 }
 
 function scanForbiddenMediaFiles(dirPath, forbiddenExts) {
@@ -49,11 +75,97 @@ function scanForbiddenMediaFiles(dirPath, forbiddenExts) {
       const ext = path.extname(entry.name).toLowerCase();
       if (forbiddenExts.includes(ext)) {
         throw new Error(
-          `Forbidden local audio/video file found at "${path.relative(ROOT_DIR, fullPath).replace(/\\/g, "/")}". ` +
-            `Audio and video must be hosted remotely; do not commit media files to the repository.`
+          `Forbidden audio/video file found under songs/: "${path.relative(ROOT_DIR, fullPath).replace(/\\/g, "/")}". ` +
+          "Runtime media belongs outside songs/ and is mapped into fixed runtime slots during Pages build."
         );
       }
     }
+  }
+}
+
+function variantFor(ext, extensions, label) {
+  const normalized = normalizeExt(ext);
+  const index = extensions.indexOf(normalized);
+  if (index < 0) {
+    throw new Error(
+      `${label} extension "${normalized}" is not pre-registered. Allowed variants: ${extensions.join(", ")}`
+    );
+  }
+  return { variant: index, extension: normalized };
+}
+
+function findJacket(songDir, allowedExtensions) {
+  const matches = fs.readdirSync(songDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .filter((entry) => {
+      const ext = path.extname(entry.name).toLowerCase();
+      return path.basename(entry.name, ext).toLowerCase() === "jacket" && allowedExtensions.includes(ext);
+    });
+
+  if (matches.length !== 1) {
+    throw new Error(
+      `Expected exactly one jacket file in "${path.relative(ROOT_DIR, songDir).replace(/\\/g, "/")}", found ${matches.length}.`
+    );
+  }
+  return matches[0].name;
+}
+
+function buildRuntimeRegistry(repoConfig) {
+  const runtime = repoConfig.runtime;
+  const base = repoConfig.publicBaseUrl.replace(/\/+$/, "");
+  return {
+    schema: "vmc-runtime-url-registry/v1",
+    version: 1,
+    baseUrl: base,
+    catalogUrl: `${base}/songs.json`,
+    slotCount: runtime.slotCount,
+    slotPadWidth: runtime.slotPadWidth,
+    arrays: {
+      audio: {
+        variantCount: runtime.audioExtensions.length,
+        extensions: runtime.audioExtensions,
+        urlTemplate: `${base}/runtime/{slot}/audio{ext}`,
+        runtimeIndex: "runtimeSlot * variantCount + variant",
+      },
+      backgroundVideo: {
+        variantCount: runtime.backgroundVideoExtensions.length,
+        extensions: runtime.backgroundVideoExtensions,
+        urlTemplate: `${base}/runtime/{slot}/background{ext}`,
+        runtimeIndex: "runtimeSlot * variantCount + variant",
+      },
+      backgroundImage: {
+        variantCount: runtime.backgroundImageExtensions.length,
+        extensions: runtime.backgroundImageExtensions,
+        urlTemplate: `${base}/runtime/{slot}/background{ext}`,
+        runtimeIndex: "runtimeSlot * variantCount + variant",
+      },
+      jacket: {
+        variantCount: runtime.jacketExtensions.length,
+        extensions: runtime.jacketExtensions,
+        urlTemplate: `${base}/runtime/{slot}/jacket{ext}`,
+        runtimeIndex: "runtimeSlot * variantCount + variant",
+      },
+      chart: {
+        difficultyCount: runtime.chartDifficulties.length,
+        difficulties: runtime.chartDifficulties,
+        urlTemplate: `${base}/runtime/{slot}/charts/{difficulty}.vmcchart`,
+        runtimeIndex: "runtimeSlot * difficultyCount + (difficulty - 1)",
+      },
+    },
+  };
+}
+
+function serialize(value) {
+  return JSON.stringify(value, null, 2) + "\n";
+}
+
+function assertFresh(targetPath, expectedText, label) {
+  if (!fs.existsSync(targetPath)) {
+    throw new Error(`${label} is missing. Run npm run catalog.`);
+  }
+  const actual = fs.readFileSync(targetPath, "utf8");
+  if (actual !== expectedText) {
+    throw new Error(`${label} is stale. Run npm run catalog and commit the result.`);
   }
 }
 
@@ -63,227 +175,158 @@ async function main() {
   }
 
   const repoConfig = JSON.parse(fs.readFileSync(REPO_CONFIG_PATH, "utf8"));
+  const runtime = repoConfig.runtime;
+  if (!runtime || !Number.isInteger(runtime.slotCount) || runtime.slotCount < 1) {
+    throw new Error("repo.config.json runtime.slotCount must be a positive integer.");
+  }
+
   const limits = repoConfig.limits || {};
   const maxChartBytes = limits.maxChartBytes ?? 5 * 1024 * 1024;
   const maxJacketBytes = limits.maxJacketBytes ?? 2 * 1024 * 1024;
-  const allowedJacketExtensions = limits.allowedJacketExtensions || [".webp", ".png", ".jpg", ".jpeg"];
-  const forbiddenMediaExtensions = limits.forbiddenMediaExtensions || [
-    ".mp3", ".ogg", ".wav", ".flac", ".aac", ".m4a", ".mp4", ".webm", ".mkv", ".avi", ".mov"
-  ];
+  const allowedJacketExtensions = (limits.allowedJacketExtensions || [".webp", ".png", ".jpg", ".jpeg"]).map(normalizeExt);
+  const forbiddenMediaExtensions = (limits.forbiddenMediaExtensions || []).map(normalizeExt);
+
+  const audioExtensions = runtime.audioExtensions.map(normalizeExt);
+  const backgroundVideoExtensions = runtime.backgroundVideoExtensions.map(normalizeExt);
+  const backgroundImageExtensions = runtime.backgroundImageExtensions.map(normalizeExt);
+  const jacketExtensions = runtime.jacketExtensions.map(normalizeExt);
+  const chartDifficulties = runtime.chartDifficulties;
 
   const validators = await initValidator();
 
-  // 1. Scan for forbidden media files under songs/
   scanForbiddenMediaFiles(SONGS_DIR, forbiddenMediaExtensions);
+  if (!fs.existsSync(SONGS_DIR)) fs.mkdirSync(SONGS_DIR, { recursive: true });
 
-  if (!fs.existsSync(SONGS_DIR)) {
-    fs.mkdirSync(SONGS_DIR, { recursive: true });
-  }
-
-  const songDirEntries = fs.readdirSync(SONGS_DIR, { withFileTypes: true });
   const seenSongIds = new Set();
-  const seenChartIds = new Map(); // chartId -> { songId, difficulty }
+  const seenChartIds = new Map();
+  const seenRuntimeSlots = new Map();
   const songs = [];
+  let chartCount = 0;
 
-  for (const dirEntry of songDirEntries) {
-    if (!dirEntry.isDirectory()) {
-      continue;
-    }
+  const songDirs = fs.readdirSync(SONGS_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .sort((a, b) => Number(a.name) - Number(b.name));
 
+  for (const dirEntry of songDirs) {
     const dirName = dirEntry.name;
-
-    // Check directory name is strictly decimal integer without leading zeroes
     if (!/^[1-9]\d*$/.test(dirName)) {
+      throw new Error(`Invalid song directory name "${dirName}".`);
+    }
+
+    const songDir = path.join(SONGS_DIR, dirName);
+    const songJsonPath = path.join(songDir, "song.json");
+    if (!fs.existsSync(songJsonPath)) throw new Error(`Missing song.json in songs/${dirName}.`);
+
+    const songData = JSON.parse(fs.readFileSync(songJsonPath, "utf8"));
+    if (validators?.validateSongSource && !validators.validateSongSource(songData)) {
       throw new Error(
-        `Invalid song directory name "${dirName}". Directory name must be strictly a positive decimal songId without leading zeroes.`
+        `Schema validation failed for songs/${dirName}/song.json:\n` +
+        validators.validateSongSource.errors.map((e) => `  ${e.instancePath} ${e.message}`).join("\n")
       );
     }
 
-    const expectedSongId = Number.parseInt(dirName, 10);
-    if (expectedSongId <= 0 || expectedSongId > 2147483647) {
-      throw new Error(`Directory name "${dirName}" exceeds 32-bit positive integer range.`);
+    if (String(songData.songId) !== dirName) {
+      throw new Error(`Directory songs/${dirName} does not match songId ${songData.songId}.`);
     }
-
-    const currentSongDir = path.join(SONGS_DIR, dirName);
-    const songJsonPath = path.join(currentSongDir, "song.json");
-
-    if (!fs.existsSync(songJsonPath)) {
-      throw new Error(`Missing song.json in "${path.relative(ROOT_DIR, currentSongDir).replace(/\\/g, "/")}".`);
-    }
-
-    let songData;
-    try {
-      songData = JSON.parse(fs.readFileSync(songJsonPath, "utf8"));
-    } catch (err) {
-      throw new Error(`Failed to parse ${songJsonPath}: ${err.message}`);
-    }
-
-    // Reject directory name differing from songId
-    if (dirName !== songData.songId.toString()) {
-      throw new Error(
-        `Directory name "${dirName}" differs from songId ${songData.songId} in ${songJsonPath}.`
-      );
-    }
-
-    // Reject duplicate song IDs
-    if (seenSongIds.has(songData.songId)) {
-      throw new Error(`Duplicate songId ${songData.songId} found in "${dirName}".`);
-    }
+    if (seenSongIds.has(songData.songId)) throw new Error(`Duplicate songId ${songData.songId}.`);
     seenSongIds.add(songData.songId);
 
-    // Validate song.json with schema if validator available
-    if (validators?.validateSongSource) {
-      const valid = validators.validateSongSource(songData);
-      if (!valid) {
-        throw new Error(
-          `Schema validation failed for ${songJsonPath}:\n` +
-            validators.validateSongSource.errors.map((e) => `  ${e.instancePath} ${e.message}`).join("\n")
-        );
-      }
-    }
-
-    // Check remote media URLs are HTTPS
-    if (!songData.media?.audio?.url || !songData.media.audio.url.startsWith("https://")) {
+    if (!Number.isInteger(songData.runtimeSlot) || songData.runtimeSlot < 0 || songData.runtimeSlot >= runtime.slotCount) {
       throw new Error(
-        `Non-HTTPS remote audio URL in song ${songData.songId}: "${songData.media?.audio?.url}". HTTPS is required.`
+        `Song ${songData.songId} runtimeSlot ${songData.runtimeSlot} is outside 0..${runtime.slotCount - 1}.`
       );
     }
-    if (songData.media?.background?.url && !songData.media.background.url.startsWith("https://")) {
+    if (seenRuntimeSlots.has(songData.runtimeSlot)) {
       throw new Error(
-        `Non-HTTPS remote background URL in song ${songData.songId}: "${songData.media.background.url}". HTTPS is required.`
+        `runtimeSlot ${songData.runtimeSlot} is used by both song ${seenRuntimeSlots.get(songData.runtimeSlot)} and song ${songData.songId}.`
       );
     }
+    seenRuntimeSlots.set(songData.runtimeSlot, songData.songId);
 
-    // Check jacket files in song directory
-    const songFiles = fs.readdirSync(currentSongDir, { withFileTypes: true });
-    const jacketFiles = songFiles.filter((f) => {
-      if (!f.isFile()) return false;
-      const lower = f.name.toLowerCase();
-      const ext = path.extname(lower);
-      const base = path.basename(lower, ext);
-      return base === "jacket" && allowedJacketExtensions.includes(ext);
-    });
+    const audioPath = songData.media?.audio?.path;
+    const audioFull = requireFile(audioPath, `Song ${songData.songId} audio path`);
+    const audioExt = path.extname(audioFull).toLowerCase();
+    const audioVariant = variantFor(audioExt, audioExtensions, `Song ${songData.songId} audio`);
 
-    if (jacketFiles.length === 0) {
+    let backgroundCatalog;
+    if (songData.media?.background) {
+      const bgPath = songData.media.background.path;
+      const bgFull = requireFile(bgPath, `Song ${songData.songId} background path`);
+      const bgExt = path.extname(bgFull).toLowerCase();
+      const bgExtensions = songData.media.background.type === "video"
+        ? backgroundVideoExtensions
+        : backgroundImageExtensions;
+      backgroundCatalog = {
+        type: songData.media.background.type,
+        ...variantFor(bgExt, bgExtensions, `Song ${songData.songId} background`),
+      };
+    }
+
+    const jacketFileName = findJacket(songDir, allowedJacketExtensions);
+    const jacketFull = path.join(songDir, jacketFileName);
+    const jacketBytes = fs.statSync(jacketFull).size;
+    if (jacketBytes <= 0 || jacketBytes > maxJacketBytes) {
       throw new Error(
-        `Missing jacket file in song ${songData.songId}. Exactly one jacket.${allowedJacketExtensions.join("/")} must exist.`
+        `Song ${songData.songId} jacket size ${jacketBytes} is outside 1..${maxJacketBytes} bytes.`
       );
     }
-    if (jacketFiles.length > 1) {
-      throw new Error(
-        `Duplicate jacket files in song ${songData.songId}: ${jacketFiles.map((f) => f.name).join(", ")}. Exactly one is allowed.`
-      );
-    }
+    const jacketExt = path.extname(jacketFileName).toLowerCase();
+    const jacketVariant = variantFor(jacketExt, jacketExtensions, `Song ${songData.songId} jacket`);
 
-    const jacketFileName = jacketFiles[0].name;
-    const jacketFilePath = path.join(currentSongDir, jacketFileName);
-    const jacketBuffer = fs.readFileSync(jacketFilePath);
-    if (jacketBuffer.length > maxJacketBytes) {
-      throw new Error(
-        `Jacket file "${jacketFilePath}" exceeds max size of ${maxJacketBytes} bytes (actual: ${jacketBuffer.length}).`
-      );
-    }
+    const chartsDir = path.join(songDir, "charts");
+    if (!fs.existsSync(chartsDir)) throw new Error(`Missing charts/ in song ${songData.songId}.`);
 
-    const jacketRelPath = `songs/${dirName}/${jacketFileName}`;
-    const jacketUrl = `${repoConfig.publicBaseUrl.replace(/\/+$/, "")}/${jacketRelPath}`;
-    const jacketObj = {
-      path: jacketRelPath,
-      url: jacketUrl,
-      bytes: jacketBuffer.length,
-      sha256: computeSha256(jacketBuffer)
-    };
+    const chartFiles = fs.readdirSync(chartsDir, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && /^[1-7]\.vmcchart$/.test(entry.name));
+    const chartFileDifficulties = new Set(chartFiles.map((entry) => Number(path.basename(entry.name, ".vmcchart"))));
 
-    // Check charts directory
-    const chartsDir = path.join(currentSongDir, "charts");
-    if (!fs.existsSync(chartsDir)) {
-      throw new Error(`Missing charts directory in song ${songData.songId} ("${chartsDir}").`);
-    }
-
-    const chartFileEntries = fs.readdirSync(chartsDir, { withFileTypes: true });
-    const chartFilesOnDisk = new Map(); // difficulty number -> filename
-
-    for (const fileEntry of chartFileEntries) {
-      if (!fileEntry.isFile()) continue;
-      const match = /^([1-7])\.vmcchart$/.exec(fileEntry.name);
-      if (!match) {
+    const charts = [];
+    for (const [difficultyKey, chartMeta] of Object.entries(songData.charts || {})) {
+      const difficulty = Number(difficultyKey);
+      if (!chartDifficulties.includes(difficulty)) {
+        throw new Error(`Song ${songData.songId} chart difficulty ${difficulty} is not pre-registered.`);
+      }
+      const chartPath = path.join(chartsDir, `${difficulty}.vmcchart`);
+      if (!fs.existsSync(chartPath)) {
+        throw new Error(`Song ${songData.songId} metadata references missing chart ${difficulty}.vmcchart.`);
+      }
+      const bytes = fs.statSync(chartPath).size;
+      if (bytes <= 0 || bytes > maxChartBytes) {
         throw new Error(
-          `Invalid chart filename "${fileEntry.name}" in songs/${dirName}/charts/. Chart files must be named strictly 1.vmcchart to 7.vmcchart.`
+          `Song ${songData.songId} chart ${difficulty} size ${bytes} is outside 1..${maxChartBytes} bytes.`
         );
       }
-      chartFilesOnDisk.set(Number.parseInt(match[1], 10), fileEntry.name);
-    }
-
-    const metadataChartKeys = Object.keys(songData.charts || {});
-    if (metadataChartKeys.length === 0) {
-      throw new Error(`Song ${songData.songId} has no charts defined in song.json.`);
-    }
-
-    // Check chart metadata without matching file
-    for (const key of metadataChartKeys) {
-      const diffNum = Number.parseInt(key, 10);
-      if (Number.isNaN(diffNum) || diffNum < 1 || diffNum > 7) {
-        throw new Error(`Invalid chart difficulty key "${key}" in song ${songData.songId}. Must be 1 to 7.`);
-      }
-      if (!chartFilesOnDisk.has(diffNum)) {
-        throw new Error(
-          `Chart difficulty "${key}" defined in song ${songData.songId} but file "charts/${key}.vmcchart" does not exist.`
-        );
-      }
-    }
-
-    // Check chart files without matching metadata
-    for (const [diffNum, filename] of chartFilesOnDisk.entries()) {
-      if (!songData.charts[diffNum.toString()]) {
-        throw new Error(
-          `Chart file "${filename}" exists in songs/${dirName}/charts/ but is not defined in song.json.charts.`
-        );
-      }
-    }
-
-    // Build chart entries
-    const chartsList = [];
-    const sortedDifficulties = Array.from(chartFilesOnDisk.keys()).sort((a, b) => a - b);
-
-    for (const diffNum of sortedDifficulties) {
-      const diffKey = diffNum.toString();
-      const chartMeta = songData.charts[diffKey];
-      const chartFileName = chartFilesOnDisk.get(diffNum);
-      const chartFilePath = path.join(chartsDir, chartFileName);
-      const chartBuffer = fs.readFileSync(chartFilePath);
-
-      if (chartBuffer.length > maxChartBytes) {
-        throw new Error(
-          `Chart file "${chartFilePath}" exceeds max size of ${maxChartBytes} bytes (actual: ${chartBuffer.length}).`
-        );
-      }
-
-      // Check duplicate chartId across entire repository
       if (seenChartIds.has(chartMeta.chartId)) {
-        const prev = seenChartIds.get(chartMeta.chartId);
+        const other = seenChartIds.get(chartMeta.chartId);
         throw new Error(
-          `Duplicate chartId ${chartMeta.chartId} found in song ${songData.songId} (diff ${diffNum}), already used by song ${prev.songId} (diff ${prev.difficulty}).`
+          `Duplicate chartId ${chartMeta.chartId}: song ${other.songId}/difficulty ${other.difficulty} and song ${songData.songId}/difficulty ${difficulty}.`
         );
       }
-      seenChartIds.set(chartMeta.chartId, { songId: songData.songId, difficulty: diffNum });
-
-      const chartRelPath = `songs/${dirName}/charts/${chartFileName}`;
-      const chartUrl = `${repoConfig.publicBaseUrl.replace(/\/+$/, "")}/${chartRelPath}`;
-
-      chartsList.push({
+      seenChartIds.set(chartMeta.chartId, { songId: songData.songId, difficulty });
+      chartFileDifficulties.delete(difficulty);
+      charts.push({
         chartId: chartMeta.chartId,
-        difficulty: diffNum,
+        difficulty,
         level: chartMeta.level,
         designer: chartMeta.designer,
         version: chartMeta.version,
-        path: chartRelPath,
-        url: chartUrl,
-        bytes: chartBuffer.length,
-        sha256: computeSha256(chartBuffer)
       });
+      chartCount++;
     }
+
+    if (chartFileDifficulties.size) {
+      throw new Error(
+        `Song ${songData.songId} has chart files without metadata: ${[...chartFileDifficulties].sort().join(", ")}.`
+      );
+    }
+    charts.sort((a, b) => a.difficulty - b.difficulty);
+
+    const media = { audio: audioVariant };
+    if (backgroundCatalog) media.background = backgroundCatalog;
 
     songs.push({
       songId: songData.songId,
+      runtimeSlot: songData.runtimeSlot,
       version: songData.version,
       enabled: songData.enabled,
       title: songData.title,
@@ -291,80 +334,65 @@ async function main() {
       bpm: songData.bpm,
       genre: songData.genre,
       tags: songData.tags,
-      media: songData.media,
-      jacket: jacketObj,
-      charts: chartsList
+      media,
+      jacket: jacketVariant,
+      charts,
     });
   }
 
-  // Sort songs ascending by songId
   songs.sort((a, b) => a.songId - b.songId);
 
-  const totalCharts = songs.reduce((acc, song) => acc + song.charts.length, 0);
-
-  const catalog = {
-    schema: "vmc-song-catalog/v1",
-    schemaVersion: 1,
-    catalogVersion: repoConfig.catalogVersion ?? 1,
-    publicBaseUrl: repoConfig.publicBaseUrl,
-    pack: {
-      packId: repoConfig.pack.packId,
-      name: repoConfig.pack.name,
-      version: repoConfig.pack.version,
-      description: repoConfig.pack.description
+  const baseUrl = repoConfig.publicBaseUrl.replace(/\/+$/, "");
+  const runtimeRegistry = buildRuntimeRegistry(repoConfig);
+  const catalogBase = {
+    schema: "vmc-song-catalog/v2",
+    schemaVersion: 2,
+    catalogVersion: repoConfig.catalogVersion,
+    publicBaseUrl: baseUrl,
+    pack: repoConfig.pack,
+    runtime: {
+      slotCount: runtime.slotCount,
+      slotPadWidth: runtime.slotPadWidth,
+      registryUrl: `${baseUrl}/runtime-url-registry.json`,
+      audioExtensions,
+      backgroundVideoExtensions,
+      backgroundImageExtensions,
+      jacketExtensions,
+      chartDifficulties,
     },
     songCount: songs.length,
-    chartCount: totalCharts,
+    chartCount,
     songs,
-    catalogSha256: ""
+  };
+  const catalog = {
+    ...catalogBase,
+    catalogSha256: computeSha256(Buffer.from(JSON.stringify(catalogBase), "utf8")),
   };
 
-  // Compute catalogSha256 over deterministic JSON representation (without catalogSha256 field)
-  const contentToHash = JSON.stringify({ ...catalog, catalogSha256: undefined }, null, 2);
-  const catalogSha256 = crypto.createHash("sha256").update(contentToHash, "utf8").digest("hex");
-  catalog.catalogSha256 = catalogSha256;
-
-  const generatedJsonString = JSON.stringify(catalog, null, 2) + "\n";
-
-  // Validate generated catalog against schema if validator available
-  if (validators?.validateCatalog) {
-    const valid = validators.validateCatalog(catalog);
-    if (!valid) {
-      throw new Error(
-        `Generated catalog failed schema validation:\n` +
-          validators.validateCatalog.errors.map((e) => `  ${e.instancePath} ${e.message}`).join("\n")
-      );
-    }
+  if (validators?.validateCatalog && !validators.validateCatalog(catalog)) {
+    throw new Error(
+      "Generated catalog schema validation failed:\n" +
+      validators.validateCatalog.errors.map((e) => `  ${e.instancePath} ${e.message}`).join("\n")
+    );
   }
+
+  const catalogText = serialize(catalog);
+  const registryText = serialize(runtimeRegistry);
 
   if (isCheckMode) {
-    if (!fs.existsSync(TARGET_SONGS_JSON_PATH)) {
-      console.error("ERROR: songs.json does not exist. Run 'npm run catalog' to generate it.");
-      process.exit(1);
-    }
-
-    const existingContent = fs.readFileSync(TARGET_SONGS_JSON_PATH, "utf8");
-    // Normalize CRLF to LF for reliable cross-platform comparison
-    const normExisting = existingContent.replace(/\r\n/g, "\n");
-    const normGenerated = generatedJsonString.replace(/\r\n/g, "\n");
-
-    if (normExisting !== normGenerated) {
-      console.error(
-        "ERROR: songs.json is out of date or does not match generated catalog.\n" +
-          "Run 'npm run catalog' locally, review the changes, and commit the updated songs.json."
-      );
-      process.exit(1);
-    }
-
+    assertFresh(TARGET_SONGS_JSON_PATH, catalogText, "songs.json");
+    assertFresh(TARGET_RUNTIME_REGISTRY_PATH, registryText, "runtime-url-registry.json");
     console.log(
-      `Catalog check passed: songs.json is up-to-date and valid (${songs.length} songs, ${totalCharts} charts, catalogSha256: ${catalogSha256}).`
+      `Catalog check passed: ${songs.length} songs, ${chartCount} charts, ${seenRuntimeSlots.size}/${runtime.slotCount} runtime slots used.`
     );
-  } else {
-    fs.writeFileSync(TARGET_SONGS_JSON_PATH, generatedJsonString, "utf8");
-    console.log(
-      `Successfully generated songs.json (${songs.length} songs, ${totalCharts} charts, catalogSha256: ${catalogSha256}).`
-    );
+    return;
   }
+
+  fs.writeFileSync(TARGET_SONGS_JSON_PATH, catalogText, "utf8");
+  fs.writeFileSync(TARGET_RUNTIME_REGISTRY_PATH, registryText, "utf8");
+  console.log(
+    `Generated songs.json and runtime-url-registry.json: ${songs.length} songs, ${chartCount} charts, ${seenRuntimeSlots.size}/${runtime.slotCount} runtime slots used.`
+  );
 }
 
 main().catch((err) => {
