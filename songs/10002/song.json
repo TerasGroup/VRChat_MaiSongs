@@ -9,11 +9,13 @@
   "tags": [],
   "media": {
     "audio": {
-      "url": "https://raw.githubusercontent.com/TerasGroup/VRChat_MaiSongs/main/media/audio/10002.mp3"
+      "url": "https://raw.githubusercontent.com/TerasGroup/VRChat_MaiSongs/main/media/audio/10002.mp3",
+      "path": "media/audio/10002.mp3"
     },
     "background": {
       "type": "image",
-      "url": "https://raw.githubusercontent.com/TerasGroup/VRChat_MaiSongs/main/media/backgrounds/10002.jpg"
+      "url": "https://raw.githubusercontent.com/TerasGroup/VRChat_MaiSongs/main/media/backgrounds/10002.jpg",
+      "path": "media/backgrounds/10002.jpg"
     }
   },
   "charts": {
@@ -23,5 +25,6 @@
       "designer": "小kai也算开",
       "version": 1
     }
-  }
+  },
+  "runtimeSlot": 1
 }
