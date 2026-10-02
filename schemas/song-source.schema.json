@@ -2,10 +2,11 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/TERASGROUP/VRChat_MaiSongs/main/schemas/song-source.schema.json",
   "title": "VMCSongSourceMetadata",
-  "description": "Source metadata schema for one VMC song in song.json",
+  "description": "Source metadata schema for one VMC song in song.json. runtimeSlot selects a pre-registered VRChat URL slot.",
   "type": "object",
   "required": [
     "songId",
+    "runtimeSlot",
     "version",
     "enabled",
     "title",
@@ -20,43 +21,41 @@
     "songId": {
       "type": "integer",
       "minimum": 1,
-      "maximum": 2147483647,
-      "description": "Globally unique 32-bit positive integer identifying the song"
+      "maximum": 2147483647
+    },
+    "runtimeSlot": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 511,
+      "description": "Fixed runtime URL slot. Must be unique within the catalog."
     },
     "version": {
       "type": "integer",
-      "minimum": 1,
-      "description": "Metadata revision number for the song"
+      "minimum": 1
     },
     "enabled": {
-      "type": "boolean",
-      "description": "Whether this song is active in the catalog"
+      "type": "boolean"
     },
     "title": {
       "type": "string",
-      "minLength": 1,
-      "description": "Song display title"
+      "minLength": 1
     },
     "artist": {
       "type": "string",
-      "minLength": 1,
-      "description": "Song display artist"
+      "minLength": 1
     },
     "bpm": {
       "type": "number",
-      "exclusiveMinimum": 0,
-      "description": "Beats per minute"
+      "exclusiveMinimum": 0
     },
     "genre": {
-      "type": "string",
-      "description": "Music genre"
+      "type": "string"
     },
     "tags": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Search and categorization tags"
+      }
     },
     "media": {
       "type": "object",
@@ -72,8 +71,7 @@
           "properties": {
             "url": {
               "type": "string",
-              "pattern": "^https://",
-              "description": "HTTPS URL for remote audio file"
+              "pattern": "^https://"
             }
           },
           "additionalProperties": false
@@ -90,13 +88,11 @@
               "enum": [
                 "video",
                 "image"
-              ],
-              "description": "Background media type"
+              ]
             },
             "url": {
               "type": "string",
-              "pattern": "^https://",
-              "description": "HTTPS URL for remote background media"
+              "pattern": "^https://"
             }
           },
           "additionalProperties": false
@@ -122,22 +118,18 @@
           "chartId": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 2147483647,
-            "description": "Globally unique 32-bit positive integer identifying the chart"
+            "maximum": 2147483647
           },
           "level": {
             "type": "string",
-            "minLength": 1,
-            "description": "Display difficulty level, e.g. 13+"
+            "minLength": 1
           },
           "designer": {
-            "type": "string",
-            "description": "Name of the chart designer"
+            "type": "string"
           },
           "version": {
             "type": "integer",
-            "minimum": 1,
-            "description": "Chart revision number"
+            "minimum": 1
           }
         },
         "additionalProperties": false
