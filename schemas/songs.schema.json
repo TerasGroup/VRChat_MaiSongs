@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/TERASGROUP/VRChat_MaiSongs/main/schemas/songs.schema.json",
-  "title": "VMCSongCatalog",
-  "description": "Machine catalog schema for generated root songs.json",
+  "title": "VMCSongCatalogV2",
+  "description": "Machine catalog for VRChat runtime-slot based song delivery. Runtime code selects pre-registered VRCUrl entries by slot and variant indexes; it never constructs URLs from strings.",
   "type": "object",
   "required": [
     "schema",
@@ -10,6 +10,7 @@
     "catalogVersion",
     "publicBaseUrl",
     "pack",
+    "runtime",
     "songCount",
     "chartCount",
     "songs",
@@ -18,15 +19,15 @@
   "properties": {
     "schema": {
       "type": "string",
-      "const": "vmc-song-catalog/v1"
+      "const": "vmc-song-catalog/v2"
     },
     "schemaVersion": {
       "type": "integer",
-      "minimum": 1
+      "const": 2
     },
     "catalogVersion": {
       "type": "integer",
-      "minimum": 1
+      "minimum": 2
     },
     "publicBaseUrl": {
       "type": "string",
@@ -59,6 +60,75 @@
       },
       "additionalProperties": false
     },
+    "runtime": {
+      "type": "object",
+      "required": [
+        "slotCount",
+        "slotPadWidth",
+        "registryUrl",
+        "audioExtensions",
+        "backgroundVideoExtensions",
+        "backgroundImageExtensions",
+        "jacketExtensions",
+        "chartDifficulties"
+      ],
+      "properties": {
+        "slotCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "slotPadWidth": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "registryUrl": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "audioExtensions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^\\.[A-Za-z0-9]+$"
+          }
+        },
+        "backgroundVideoExtensions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^\\.[A-Za-z0-9]+$"
+          }
+        },
+        "backgroundImageExtensions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^\\.[A-Za-z0-9]+$"
+          }
+        },
+        "jacketExtensions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^\\.[A-Za-z0-9]+$"
+          }
+        },
+        "chartDifficulties": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 7
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "songCount": {
       "type": "integer",
       "minimum": 0
@@ -73,6 +143,7 @@
         "type": "object",
         "required": [
           "songId",
+          "runtimeSlot",
           "version",
           "enabled",
           "title",
@@ -89,6 +160,10 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 2147483647
+          },
+          "runtimeSlot": {
+            "type": "integer",
+            "minimum": 0
           },
           "version": {
             "type": "integer",
@@ -125,12 +200,16 @@
               "audio": {
                 "type": "object",
                 "required": [
-                  "url"
+                  "variant",
+                  "extension"
                 ],
                 "properties": {
-                  "url": {
-                    "type": "string",
-                    "pattern": "^https://"
+                  "variant": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "extension": {
+                    "type": "string"
                   }
                 },
                 "additionalProperties": false
@@ -139,7 +218,8 @@
                 "type": "object",
                 "required": [
                   "type",
-                  "url"
+                  "variant",
+                  "extension"
                 ],
                 "properties": {
                   "type": {
@@ -149,9 +229,12 @@
                       "image"
                     ]
                   },
-                  "url": {
-                    "type": "string",
-                    "pattern": "^https://"
+                  "variant": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "extension": {
+                    "type": "string"
                   }
                 },
                 "additionalProperties": false
@@ -162,25 +245,16 @@
           "jacket": {
             "type": "object",
             "required": [
-              "path",
-              "url",
-              "bytes",
-              "sha256"
+              "variant",
+              "extension"
             ],
             "properties": {
-              "path": {
-                "type": "string"
-              },
-              "url": {
-                "type": "string"
-              },
-              "bytes": {
+              "variant": {
                 "type": "integer",
-                "minimum": 1
+                "minimum": 0
               },
-              "sha256": {
-                "type": "string",
-                "pattern": "^[0-9a-f]{64}$"
+              "extension": {
+                "type": "string"
               }
             },
             "additionalProperties": false
@@ -194,11 +268,7 @@
                 "difficulty",
                 "level",
                 "designer",
-                "version",
-                "path",
-                "url",
-                "bytes",
-                "sha256"
+                "version"
               ],
               "properties": {
                 "chartId": {
@@ -220,20 +290,6 @@
                 "version": {
                   "type": "integer",
                   "minimum": 1
-                },
-                "path": {
-                  "type": "string"
-                },
-                "url": {
-                  "type": "string"
-                },
-                "bytes": {
-                  "type": "integer",
-                  "minimum": 1
-                },
-                "sha256": {
-                  "type": "string",
-                  "pattern": "^[0-9a-f]{64}$"
                 }
               },
               "additionalProperties": false

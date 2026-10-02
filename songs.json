@@ -1,19 +1,62 @@
 {
-  "schema": "vmc-song-catalog/v1",
-  "schemaVersion": 1,
-  "catalogVersion": 1,
+  "schema": "vmc-song-catalog/v2",
+  "schemaVersion": 2,
+  "catalogVersion": 2,
   "publicBaseUrl": "https://terasgroup.github.io/VRChat_MaiSongs",
   "pack": {
     "packId": "example-pack",
     "name": "Example VMC Pack",
-    "version": 1,
-    "description": "Example VMC song pack repository"
+    "version": 2,
+    "description": "VMC song pack repository with fixed VRChat runtime URL slots"
+  },
+  "runtime": {
+    "slotCount": 512,
+    "slotPadWidth": 4,
+    "registryUrl": "https://terasgroup.github.io/VRChat_MaiSongs/runtime-url-registry.json",
+    "audioExtensions": [
+      ".mp3",
+      ".ogg",
+      ".wav",
+      ".flac",
+      ".aac",
+      ".m4a"
+    ],
+    "backgroundVideoExtensions": [
+      ".mp4",
+      ".webm",
+      ".mkv",
+      ".avi",
+      ".mov"
+    ],
+    "backgroundImageExtensions": [
+      ".webp",
+      ".png",
+      ".jpg",
+      ".jpeg",
+      ".gif"
+    ],
+    "jacketExtensions": [
+      ".webp",
+      ".png",
+      ".jpg",
+      ".jpeg"
+    ],
+    "chartDifficulties": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ]
   },
   "songCount": 3,
   "chartCount": 4,
   "songs": [
     {
       "songId": 10001,
+      "runtimeSlot": 0,
       "version": 1,
       "enabled": true,
       "title": "Hello, SEKAI",
@@ -23,18 +66,18 @@
       "tags": [],
       "media": {
         "audio": {
-          "url": "https://raw.githubusercontent.com/TerasGroup/VRChat_MaiSongs/main/media/audio/10001.mp3"
+          "variant": 0,
+          "extension": ".mp3"
         },
         "background": {
           "type": "image",
-          "url": "https://raw.githubusercontent.com/TerasGroup/VRChat_MaiSongs/main/media/backgrounds/10001.jpg"
+          "variant": 2,
+          "extension": ".jpg"
         }
       },
       "jacket": {
-        "path": "songs/10001/jacket.jpg",
-        "url": "https://terasgroup.github.io/VRChat_MaiSongs/songs/10001/jacket.jpg",
-        "bytes": 194948,
-        "sha256": "71d3ec2e325c78a37e62964ceb1a63b4de0ac26f8152ee77c3546b077fee4e1c"
+        "variant": 2,
+        "extension": ".jpg"
       },
       "charts": [
         {
@@ -42,16 +85,13 @@
           "difficulty": 5,
           "level": "13",
           "designer": "MiraT",
-          "version": 1,
-          "path": "songs/10001/charts/5.vmcchart",
-          "url": "https://terasgroup.github.io/VRChat_MaiSongs/songs/10001/charts/5.vmcchart",
-          "bytes": 21207,
-          "sha256": "49671942b6f143ff2f9faaffb9943711097c3c989666dad0db97143fe23e3c2b"
+          "version": 1
         }
       ]
     },
     {
       "songId": 10002,
+      "runtimeSlot": 1,
       "version": 1,
       "enabled": true,
       "title": "前へススメ！",
@@ -61,18 +101,18 @@
       "tags": [],
       "media": {
         "audio": {
-          "url": "https://raw.githubusercontent.com/TerasGroup/VRChat_MaiSongs/main/media/audio/10002.mp3"
+          "variant": 0,
+          "extension": ".mp3"
         },
         "background": {
           "type": "image",
-          "url": "https://raw.githubusercontent.com/TerasGroup/VRChat_MaiSongs/main/media/backgrounds/10002.jpg"
+          "variant": 2,
+          "extension": ".jpg"
         }
       },
       "jacket": {
-        "path": "songs/10002/jacket.jpg",
-        "url": "https://terasgroup.github.io/VRChat_MaiSongs/songs/10002/jacket.jpg",
-        "bytes": 515315,
-        "sha256": "b1de3f70f75cd53383591d2fe556c037497311cea314830488651d86ed8bf0d0"
+        "variant": 2,
+        "extension": ".jpg"
       },
       "charts": [
         {
@@ -80,16 +120,13 @@
           "difficulty": 5,
           "level": "13",
           "designer": "小kai也算开",
-          "version": 1,
-          "path": "songs/10002/charts/5.vmcchart",
-          "url": "https://terasgroup.github.io/VRChat_MaiSongs/songs/10002/charts/5.vmcchart",
-          "bytes": 20716,
-          "sha256": "68a39d120392e8e913447bdbd24023b5874e27c42563a25d914a7e544777532e"
+          "version": 1
         }
       ]
     },
     {
       "songId": 10003,
+      "runtimeSlot": 2,
       "version": 1,
       "enabled": true,
       "title": "BOW AND ARROW",
@@ -99,18 +136,18 @@
       "tags": [],
       "media": {
         "audio": {
-          "url": "https://raw.githubusercontent.com/TerasGroup/VRChat_MaiSongs/main/media/audio/10003.mp3"
+          "variant": 0,
+          "extension": ".mp3"
         },
         "background": {
           "type": "video",
-          "url": "https://raw.githubusercontent.com/TerasGroup/VRChat_MaiSongs/main/media/backgrounds/10003.mp4"
+          "variant": 0,
+          "extension": ".mp4"
         }
       },
       "jacket": {
-        "path": "songs/10003/jacket.jpg",
-        "url": "https://terasgroup.github.io/VRChat_MaiSongs/songs/10003/jacket.jpg",
-        "bytes": 538090,
-        "sha256": "5c022936f001794d6089c955582b7526313b8868d9a6aae3924eab954c9ff608"
+        "variant": 2,
+        "extension": ".jpg"
       },
       "charts": [
         {
@@ -118,25 +155,17 @@
           "difficulty": 5,
           "level": "13+",
           "designer": "fullower",
-          "version": 1,
-          "path": "songs/10003/charts/5.vmcchart",
-          "url": "https://terasgroup.github.io/VRChat_MaiSongs/songs/10003/charts/5.vmcchart",
-          "bytes": 16161,
-          "sha256": "ba38b79017321515526773836810641d24db9a792a50704024ee302cc266c107"
+          "version": 1
         },
         {
           "chartId": 100036,
           "difficulty": 6,
           "level": "13+",
           "designer": "fullower",
-          "version": 1,
-          "path": "songs/10003/charts/6.vmcchart",
-          "url": "https://terasgroup.github.io/VRChat_MaiSongs/songs/10003/charts/6.vmcchart",
-          "bytes": 16164,
-          "sha256": "6f99c587093028ffcdafded24989641a0b6724fee8517a9cc338ed1f4e707d15"
+          "version": 1
         }
       ]
     }
   ],
-  "catalogSha256": "d298b28b30fdb582dbb590aa50ca35dedb31084000e7fe92296785e57f48723b"
+  "catalogSha256": "763877c24e6e7d99382382df92462af2f9c61eced88927f125b7bcbf48de08d0"
 }

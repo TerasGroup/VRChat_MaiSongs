@@ -1,122 +1,223 @@
-# VMC Song Pack Repository
+# VMC Song Pack Repository v2
 
-This repository is the version-controlled source of truth for VMC song metadata and chart assets, designed according to the **VMC Song Pack GitHub Repository Design v1**.
+This repository is the version-controlled source of truth for VRChat maimai song metadata, VMC charts, and test media.
 
-It uses GitHub Pages for lightweight metadata (`songs.json`), chart files (`*.vmcchart`), and jacket images. Audio should stay on an external CDN/object store; background media may currently be hosted on GitHub via a direct HTTPS URL.
+The v2 runtime model is designed around a VRChat/Udon constraint: **runtime code never constructs a `VRCUrl` from a downloaded string**. Instead, Unity pre-registers a fixed URL registry before the World is uploaded. The online catalog only tells Udon which numeric slot and variant to select.
 
----
+## Runtime model
 
-## 📁 Repository Structure
+```text
+songId 10023
+     │
+     └── runtimeSlot 7
+              │
+              ├── audio variant
+              ├── background type + variant
+              ├── jacket variant
+              └── chart difficulty
+                       │
+                       ▼
+              pre-registered VRCUrl[]
+```
+
+The default capacity is **512 runtime slots**. The capacity and supported file variants are defined in `repo.config.json`.
+
+For example slot 7 is published by GitHub Pages under stable paths such as:
+
+```text
+https://terasgroup.github.io/VRChat_MaiSongs/runtime/0007/audio.ogg
+https://terasgroup.github.io/VRChat_MaiSongs/runtime/0007/background.mp4
+https://terasgroup.github.io/VRChat_MaiSongs/runtime/0007/jacket.png
+https://terasgroup.github.io/VRChat_MaiSongs/runtime/0007/charts/5.vmcchart
+```
+
+These strings are generated/serialized in the **Unity Editor**, not created by Udon at runtime.
+
+## Repository structure
 
 ```text
 .
-├─ repo.config.json            # Repository identity, publication URL, and limits
-├─ songs.json                  # Generated catalog consumed by clients (committed)
-├─ songs.sig                   # Ed25519 signature generated in CI when configured
-├─ package.json                # Scripts and dependencies
-├─ package-lock.json           # Locked dependencies
-├─ scripts/
-│  ├─ generate-catalog.mjs     # Generates songs.json and performs strict checks
-│  ├─ sign-catalog.mjs         # Signs songs.json with Ed25519 key (if secret exists)
-│  └─ build-pages.mjs          # Builds dist/ containing only catalog-referenced assets
-├─ schemas/
-│  ├─ song-source.schema.json  # JSON schema for human-maintained song.json
-│  └─ songs.schema.json        # JSON schema for generated songs.json
-├─ backgrounds/                 # Optional GitHub-hosted background media; keep outside songs/
-│  └─ <songId>.<ext>
+├─ repo.config.json
+├─ songs.json                       # generated runtime catalog v2
+├─ runtime-url-registry.json        # generated Unity Editor URL registry definition
+├─ songs.sig
+├─ media/
+│  ├─ audio/
+│  │  └─ <songId>.<ext>
+│  └─ backgrounds/
+│     └─ <songId>.<ext>
 ├─ songs/
-│  └─ <songId>/                # Exactly positive decimal songId (e.g. 10001)
-│     ├─ song.json             # Song metadata and charts configuration
-│     ├─ jacket.webp           # Exactly one jacket file (.webp/.png/.jpg/.jpeg)
+│  └─ <songId>/
+│     ├─ song.json                  # source metadata, includes runtimeSlot
+│     ├─ jacket.<ext>
 │     └─ charts/
-│        ├─ 4.vmcchart         # Chart file for difficulty 4
-│        └─ 5.vmcchart         # Chart file for difficulty 5
-└─ .github/workflows/
-   ├─ catalog-check.yml        # CI check for PRs and pushes to main
-   ├─ pages.yml                # GitHub Pages deployment and catalog signing
-   └─ update-catalog.yml       # Manual workflow dispatch to regenerate catalog
+│        ├─ 1.vmcchart
+│        └─ ...
+├─ scripts/
+│  ├─ generate-catalog.mjs
+│  ├─ build-pages.mjs
+│  └─ sign-catalog.mjs
+└─ schemas/
+   ├─ song-source.schema.json
+   └─ songs.schema.json
 ```
 
----
+The source repository keeps assets grouped by `songId`. During Pages build, `build-pages.mjs` creates fixed runtime aliases under `dist/runtime/<slot>/...`. Existing source files therefore do not need to be physically moved when a slot is assigned.
 
-## 🚀 Quick Start & Scripts
+## Import from VRChat_Mai_Convertor
 
-### 1. Install Dependencies
+Converter v0.5.0 is the recommended entry point:
+
+```powershell
+node bin/vmc-convert.js import "E:\Songs\THE IDOLM@STER" `
+  --maisongs-root "E:\VRCHAT\maimai\VRChat_MaiSongs" `
+  --catalog
+```
+
+The importer automatically:
+
+- finds `maidata.txt`, jacket, audio and background media;
+- allocates the next `songId` when omitted;
+- allocates the first free `runtimeSlot` in `0..511`;
+- preserves the existing runtime slot when the same song is re-imported with `--force`;
+- copies audio to `media/audio/<songId>.<ext>`;
+- copies background to `media/backgrounds/<songId>.<ext>`;
+- writes `runtimeSlot` and repository-relative media paths into `song.json`;
+- generates all `*.vmcchart` files;
+- runs `npm run catalog` when `--catalog` is provided.
+
+To choose a slot manually:
+
+```powershell
+node bin/vmc-convert.js import "E:\Songs\THE IDOLM@STER" `
+  --maisongs-root "E:\VRCHAT\maimai\VRChat_MaiSongs" `
+  --song-id 10023 `
+  --runtime-slot 7 `
+  --catalog
+```
+
+A slot may be used by only one song.
+
+## Generated catalog v2
+
+Runtime-facing `songs.json` deliberately does **not** require Udon to consume resource URL strings.
+
+A song entry contains data such as:
+
+```json
+{
+  "songId": 10001,
+  "runtimeSlot": 0,
+  "title": "Hello, SEKAI",
+  "media": {
+    "audio": {
+      "variant": 0,
+      "extension": ".mp3"
+    },
+    "background": {
+      "type": "image",
+      "variant": 2,
+      "extension": ".jpg"
+    }
+  },
+  "jacket": {
+    "variant": 2,
+    "extension": ".jpg"
+  },
+  "charts": [
+    {
+      "chartId": 100015,
+      "difficulty": 5,
+      "level": "13",
+      "designer": "MiraT",
+      "version": 1
+    }
+  ]
+}
+```
+
+Unity/Udon uses the numeric indexes to select an already serialized `VRCUrl`.
+
+## URL array indexes
+
+The registry manifest defines the array layout. Current formulas are:
+
+```text
+audioIndex
+  = runtimeSlot * audioVariantCount + audioVariant
+
+backgroundVideoIndex
+  = runtimeSlot * videoVariantCount + backgroundVariant
+
+backgroundImageIndex
+  = runtimeSlot * imageVariantCount + backgroundVariant
+
+jacketIndex
+  = runtimeSlot * jacketVariantCount + jacketVariant
+
+chartIndex
+  = runtimeSlot * 7 + (difficulty - 1)
+```
+
+See `docs/UNITY_VRCURL_REGISTRY.md` for the Unity integration contract.
+
+## Commands
+
+Install dependencies once:
 
 ```bash
-npm install
+npm ci
 ```
 
-### 2. Generate Catalog
-
-When you add or update songs/charts under `songs/`:
+Regenerate `songs.json` and `runtime-url-registry.json`:
 
 ```bash
 npm run catalog
 ```
 
-This derives all paths, file sizes, and SHA-256 hashes, updating root `songs.json`.
-
-### 3. Check Catalog (CI Mode)
-
-Verify that `songs.json` is fresh and all integrity rules pass:
+Verify both generated files are current:
 
 ```bash
 npm run catalog:check
 ```
 
-### 4. Build GitHub Pages Distribution
-
-Assemble the `dist/` directory containing only the catalog and its referenced assets:
+Build the GitHub Pages output:
 
 ```bash
 npm run pages:build
 ```
 
-### 5. Ed25519 Catalog Signing (Optional)
+The Pages build publishes:
 
-Generate keypair locally:
+```text
+dist/
+├─ songs.json
+├─ runtime-url-registry.json
+├─ songs.sig
+├─ runtime/
+│  ├─ 0000/
+│  ├─ 0001/
+│  └─ ...
+└─ songs/...                      # legacy jacket/chart aliases during migration
+```
+
+## Contribution rules
+
+1. Every `songs/<songId>/song.json` must have a unique `runtimeSlot`.
+2. `runtimeSlot` must be within the configured capacity, currently `0..511`.
+3. Audio/video files must stay outside `songs/`; the importer uses `media/audio/` and `media/backgrounds/`.
+4. `song.json.media.*.path` must be a repository-relative source path.
+5. Exactly one `jacket.webp/png/jpg/jpeg` is allowed per song.
+6. Chart filenames are strictly `1.vmcchart` through `7.vmcchart`.
+7. Asset extensions must be listed in `repo.config.json.runtime`; otherwise that URL variant was not pre-registered for the World.
+8. Run `npm run catalog` before committing song changes.
+
+## Catalog signing
+
+To generate an Ed25519 keypair:
 
 ```bash
 node scripts/sign-catalog.mjs --generate-keypair
 ```
 
-To sign automatically in GitHub Actions, add the private key PEM as a secret named `VMC_CATALOG_PRIVATE_KEY_PEM`. To verify:
-
-```bash
-node scripts/sign-catalog.mjs --verify <path-to-public-key.pem>
-```
-
----
-
-## Import directly from VRChat_Mai_Convertor
-
-Converter v0.3.0 can create a complete `songs/<songId>/` package and regenerate this repository's catalog in one command:
-
-```powershell
-node bin/vmc-convert.js pack "E:\Songs\maidata.txt" `
-  --song-id 10001 `
-  --jacket "E:\Songs\bg.png" `
-  --audio-url "https://r2.example/audio/10001.ogg" `
-  --background-url "https://raw.githubusercontent.com/TerasGroup/VRChat_MaiSongs/main/backgrounds/10001.mp4" `
-  --maisongs-root "E:\VRChat_MaiSongs" `
-  --catalog
-```
-
-The converter derives title, artist, BPM, chart levels and designers from maidata, writes numeric chart filenames, and uses deterministic chart IDs such as `100015` for song `10001` MASTER slot `5`.
-
-### GitHub-hosted backgrounds
-
-For the current setup, background images/videos may be committed under the repository-level `backgrounds/` directory and referenced using a direct HTTPS URL such as `raw.githubusercontent.com`. Do not use a normal `github.com/.../blob/...` page URL because that returns HTML rather than the media bytes.
-
-Keep background media outside `songs/`: the catalog validator intentionally rejects audio/video files inside song directories.
-
----
-
-## 📋 Contribution Rules
-
-1. **No Audio/Video Under `songs/`**: Never commit `.mp3`, `.wav`, `.mp4` or other audio/video files under `songs/`. Audio stays external; GitHub-hosted backgrounds belong under repository-level `backgrounds/`. All media URLs must use `https://`.
-2. **Deterministic Folder Naming**: Song folder names must strictly match the decimal `songId` with no prefixes or suffixes.
-3. **One Jacket File**: Exactly one jacket file named `jacket.webp`, `jacket.png`, `jacket.jpg`, or `jacket.jpeg` per song directory.
-4. **Strict Chart Naming**: Chart files must be named `1.vmcchart` through `7.vmcchart`, and every chart file must have a matching entry in `song.json.charts`.
-5. **Always Regenerate Before Committing**: Run `npm run catalog` and commit the updated `songs.json` in your PR.
+For GitHub Actions signing, store the private PEM in `VMC_CATALOG_PRIVATE_KEY_PEM`.

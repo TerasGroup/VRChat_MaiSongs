@@ -1,11 +1,52 @@
 {
-  "catalogVersion": 1,
+  "catalogVersion": 2,
   "publicBaseUrl": "https://terasgroup.github.io/VRChat_MaiSongs",
   "pack": {
     "packId": "example-pack",
     "name": "Example VMC Pack",
-    "version": 1,
-    "description": "Example VMC song pack repository"
+    "version": 2,
+    "description": "VMC song pack repository with fixed VRChat runtime URL slots"
+  },
+  "runtime": {
+    "slotCount": 512,
+    "slotPadWidth": 4,
+    "audioExtensions": [
+      ".mp3",
+      ".ogg",
+      ".wav",
+      ".flac",
+      ".aac",
+      ".m4a"
+    ],
+    "backgroundVideoExtensions": [
+      ".mp4",
+      ".webm",
+      ".mkv",
+      ".avi",
+      ".mov"
+    ],
+    "backgroundImageExtensions": [
+      ".webp",
+      ".png",
+      ".jpg",
+      ".jpeg",
+      ".gif"
+    ],
+    "jacketExtensions": [
+      ".webp",
+      ".png",
+      ".jpg",
+      ".jpeg"
+    ],
+    "chartDifficulties": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ]
   },
   "limits": {
     "maxChartBytes": 5242880,

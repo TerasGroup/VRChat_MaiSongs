@@ -1,0 +1,72 @@
+{
+  "schema": "vmc-runtime-url-registry/v1",
+  "version": 1,
+  "baseUrl": "https://terasgroup.github.io/VRChat_MaiSongs",
+  "catalogUrl": "https://terasgroup.github.io/VRChat_MaiSongs/songs.json",
+  "slotCount": 512,
+  "slotPadWidth": 4,
+  "arrays": {
+    "audio": {
+      "variantCount": 6,
+      "extensions": [
+        ".mp3",
+        ".ogg",
+        ".wav",
+        ".flac",
+        ".aac",
+        ".m4a"
+      ],
+      "urlTemplate": "https://terasgroup.github.io/VRChat_MaiSongs/runtime/{slot}/audio{ext}",
+      "runtimeIndex": "runtimeSlot * variantCount + variant"
+    },
+    "backgroundVideo": {
+      "variantCount": 5,
+      "extensions": [
+        ".mp4",
+        ".webm",
+        ".mkv",
+        ".avi",
+        ".mov"
+      ],
+      "urlTemplate": "https://terasgroup.github.io/VRChat_MaiSongs/runtime/{slot}/background{ext}",
+      "runtimeIndex": "runtimeSlot * variantCount + variant"
+    },
+    "backgroundImage": {
+      "variantCount": 5,
+      "extensions": [
+        ".webp",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif"
+      ],
+      "urlTemplate": "https://terasgroup.github.io/VRChat_MaiSongs/runtime/{slot}/background{ext}",
+      "runtimeIndex": "runtimeSlot * variantCount + variant"
+    },
+    "jacket": {
+      "variantCount": 4,
+      "extensions": [
+        ".webp",
+        ".png",
+        ".jpg",
+        ".jpeg"
+      ],
+      "urlTemplate": "https://terasgroup.github.io/VRChat_MaiSongs/runtime/{slot}/jacket{ext}",
+      "runtimeIndex": "runtimeSlot * variantCount + variant"
+    },
+    "chart": {
+      "difficultyCount": 7,
+      "difficulties": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "urlTemplate": "https://terasgroup.github.io/VRChat_MaiSongs/runtime/{slot}/charts/{difficulty}.vmcchart",
+      "runtimeIndex": "runtimeSlot * difficultyCount + (difficulty - 1)"
+    }
+  }
+}

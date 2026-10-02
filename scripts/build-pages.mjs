@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 const ROOT_DIR = process.cwd();
 const DIST_DIR = path.join(ROOT_DIR, "dist");
 const SONGS_JSON_PATH = path.join(ROOT_DIR, "songs.json");
+const RUNTIME_REGISTRY_PATH = path.join(ROOT_DIR, "runtime-url-registry.json");
 const SONGS_SIG_PATH = path.join(ROOT_DIR, "songs.sig");
 
 function computeSha256(buffer) {
@@ -26,6 +27,7 @@ function buildIndexHtml(catalog) {
   const description = escapeHtml(pack.description || "");
   const songCount = Number(catalog.songCount || 0);
   const chartCount = Number(catalog.chartCount || 0);
+  const slotCount = Number(catalog.runtime?.slotCount || 0);
 
   return `<!doctype html>
 <html lang="en">
@@ -45,97 +47,139 @@ function buildIndexHtml(catalog) {
   <main>
     <h1>${title}</h1>
     ${description ? `<p>${description}</p>` : ""}
-    <p class="meta">${songCount} song(s), ${chartCount} chart(s).</p>
-    <p>This GitHub Pages site publishes the machine-readable VMC song catalog and chart assets.</p>
-    <p><a href="./songs.json">Open songs.json</a></p>
-    <p><code>vmc-song-catalog/v1</code></p>
+    <p class="meta">${songCount} song(s), ${chartCount} chart(s), ${slotCount} pre-registered runtime slots.</p>
+    <p>This site publishes catalog v2 and fixed VRChat runtime-slot assets. Udon selects pre-registered VRCUrl values by numeric indexes and does not construct URLs at runtime.</p>
+    <p><a href="./songs.json">Open songs.json</a> · <a href="./runtime-url-registry.json">Open runtime URL registry</a></p>
+    <p><code>vmc-song-catalog/v2</code></p>
   </main>
 </body>
 </html>
 `;
 }
 
-function copyAsset(relPath, expectedSha256) {
-  const src = path.join(ROOT_DIR, relPath);
-  const dest = path.join(DIST_DIR, relPath);
-
-  if (!fs.existsSync(src)) {
-    throw new Error(`Referenced asset missing: "${relPath}"`);
+function safeSource(relPath) {
+  if (!relPath || path.isAbsolute(relPath) || relPath.includes("\\")) {
+    throw new Error(`Invalid repository-relative source path: "${relPath}"`);
   }
+  const full = path.resolve(ROOT_DIR, relPath);
+  const rootPrefix = ROOT_DIR.endsWith(path.sep) ? ROOT_DIR : ROOT_DIR + path.sep;
+  if (full !== ROOT_DIR && !full.startsWith(rootPrefix)) {
+    throw new Error(`Source path escapes repository root: "${relPath}"`);
+  }
+  return full;
+}
 
+function copyAsset(sourceRelPath, destinationRelPath) {
+  const src = safeSource(sourceRelPath);
+  const dest = path.join(DIST_DIR, destinationRelPath);
+  if (!fs.existsSync(src) || !fs.statSync(src).isFile()) {
+    throw new Error(`Referenced asset missing: "${sourceRelPath}"`);
+  }
   const data = fs.readFileSync(src);
-  if (expectedSha256) {
-    const actualSha256 = computeSha256(data);
-    if (actualSha256 !== expectedSha256) {
-      throw new Error(`SHA-256 mismatch for "${relPath}": expected ${expectedSha256}, got ${actualSha256}`);
-    }
-  }
-
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, data);
   return data.length;
 }
 
+function copyTextFile(sourcePath, destinationName) {
+  const data = fs.readFileSync(sourcePath);
+  fs.writeFileSync(path.join(DIST_DIR, destinationName), data);
+  return data.length;
+}
+
 function main() {
   if (!fs.existsSync(SONGS_JSON_PATH)) {
-    console.error("ERROR: songs.json does not exist. Run 'npm run catalog' first.");
-    process.exit(1);
+    throw new Error("songs.json does not exist. Run 'npm run catalog' first.");
+  }
+  if (!fs.existsSync(RUNTIME_REGISTRY_PATH)) {
+    throw new Error("runtime-url-registry.json does not exist. Run 'npm run catalog' first.");
   }
 
   const catalog = JSON.parse(fs.readFileSync(SONGS_JSON_PATH, "utf8"));
-
-  // Clean and recreate dist directory
-  if (fs.existsSync(DIST_DIR)) {
-    fs.rmSync(DIST_DIR, { recursive: true, force: true });
+  if (catalog.schema !== "vmc-song-catalog/v2") {
+    throw new Error(`Expected vmc-song-catalog/v2, got "${catalog.schema}".`);
   }
-  fs.mkdirSync(DIST_DIR, { recursive: true });
 
-  // Add .nojekyll to prevent GitHub Pages Jekyll processing
+  if (fs.existsSync(DIST_DIR)) fs.rmSync(DIST_DIR, { recursive: true, force: true });
+  fs.mkdirSync(DIST_DIR, { recursive: true });
   fs.writeFileSync(path.join(DIST_DIR, ".nojekyll"), "");
 
   let totalBytes = 0;
   let fileCount = 0;
 
-  // 1. Copy songs.json
-  const songsJsonBytes = fs.readFileSync(SONGS_JSON_PATH);
-  fs.writeFileSync(path.join(DIST_DIR, "songs.json"), songsJsonBytes);
-  totalBytes += songsJsonBytes.length;
+  totalBytes += copyTextFile(SONGS_JSON_PATH, "songs.json");
+  fileCount++;
+  totalBytes += copyTextFile(RUNTIME_REGISTRY_PATH, "runtime-url-registry.json");
   fileCount++;
 
-  // 2. Generate a lightweight landing page so the repository root does not return 404.
   const indexHtml = buildIndexHtml(catalog);
   fs.writeFileSync(path.join(DIST_DIR, "index.html"), indexHtml, "utf8");
   totalBytes += Buffer.byteLength(indexHtml, "utf8");
   fileCount++;
 
-  // 3. Copy songs.sig if present
   if (fs.existsSync(SONGS_SIG_PATH)) {
-    const sigBytes = fs.readFileSync(SONGS_SIG_PATH);
-    fs.writeFileSync(path.join(DIST_DIR, "songs.sig"), sigBytes);
-    totalBytes += sigBytes.length;
+    totalBytes += copyTextFile(SONGS_SIG_PATH, "songs.sig");
     fileCount++;
-    console.log("Included songs.sig in distribution.");
   }
 
-  // 4. Copy referenced jacket and chart assets only
+  const padWidth = catalog.runtime.slotPadWidth;
+
   for (const song of catalog.songs || []) {
-    if (song.jacket?.path) {
-      const bytes = copyAsset(song.jacket.path, song.jacket.sha256);
-      totalBytes += bytes;
+    const songDirRel = `songs/${song.songId}`;
+    const sourceSongPath = path.join(ROOT_DIR, songDirRel, "song.json");
+    if (!fs.existsSync(sourceSongPath)) {
+      throw new Error(`Missing source song.json for song ${song.songId}.`);
+    }
+    const sourceSong = JSON.parse(fs.readFileSync(sourceSongPath, "utf8"));
+    if (sourceSong.runtimeSlot !== song.runtimeSlot) {
+      throw new Error(`runtimeSlot mismatch for song ${song.songId}.`);
+    }
+
+    const slot = String(song.runtimeSlot).padStart(padWidth, "0");
+    const runtimeRoot = `runtime/${slot}`;
+
+    const audioSource = sourceSong.media?.audio?.path;
+    const audioDest = `${runtimeRoot}/audio${song.media.audio.extension}`;
+    totalBytes += copyAsset(audioSource, audioDest);
+    fileCount++;
+
+    if (song.media.background) {
+      const backgroundSource = sourceSong.media?.background?.path;
+      const backgroundDest = `${runtimeRoot}/background${song.media.background.extension}`;
+      totalBytes += copyAsset(backgroundSource, backgroundDest);
       fileCount++;
     }
+
+    const jacketSource = `${songDirRel}/jacket${song.jacket.extension}`;
+    const jacketRuntimeDest = `${runtimeRoot}/jacket${song.jacket.extension}`;
+    totalBytes += copyAsset(jacketSource, jacketRuntimeDest);
+    fileCount++;
+
+    // Preserve legacy Pages jacket URL while clients migrate to runtime slots.
+    totalBytes += copyAsset(jacketSource, jacketSource);
+    fileCount++;
+
     for (const chart of song.charts || []) {
-      if (chart.path) {
-        const bytes = copyAsset(chart.path, chart.sha256);
-        totalBytes += bytes;
-        fileCount++;
-      }
+      const chartSource = `${songDirRel}/charts/${chart.difficulty}.vmcchart`;
+      const chartRuntimeDest = `${runtimeRoot}/charts/${chart.difficulty}.vmcchart`;
+      totalBytes += copyAsset(chartSource, chartRuntimeDest);
+      fileCount++;
+
+      // Preserve legacy Pages chart URL while clients migrate to runtime slots.
+      totalBytes += copyAsset(chartSource, chartSource);
+      fileCount++;
     }
   }
 
   console.log(
-    `Pages build completed: ${fileCount} files copied to dist/ (${(totalBytes / 1024).toFixed(2)} KB).`
+    `Pages build completed: ${fileCount} files written to dist/ (${(totalBytes / 1024).toFixed(2)} KB), runtime assets addressed by fixed slots.`
   );
+  console.log(`Catalog SHA-256: ${computeSha256(fs.readFileSync(SONGS_JSON_PATH))}`);
 }
 
-main();
+try {
+  main();
+} catch (err) {
+  console.error("ERROR:", err.message);
+  process.exit(1);
+}

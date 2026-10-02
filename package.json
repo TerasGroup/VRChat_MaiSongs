@@ -1,7 +1,7 @@
 {
   "name": "vrchat-mai-songs",
-  "version": "1.0.0",
-  "description": "VMC Song Pack repository for VRChat",
+  "version": "2.0.0",
+  "description": "VRChat maimai song pack with fixed pre-registered runtime URL slots",
   "type": "module",
   "scripts": {
     "catalog": "node scripts/generate-catalog.mjs",
