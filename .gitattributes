@@ -1,0 +1,8 @@
+# Ensure consistent LF line endings across all platforms to protect raw byte Ed25519 signature verification
+* text=auto eol=lf
+*.json text eol=lf
+*.vmcchart text eol=lf
+*.mjs text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.sig binary

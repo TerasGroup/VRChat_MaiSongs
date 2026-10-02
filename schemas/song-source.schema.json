@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/TERASGROUP/VRChat_MaiSongs/main/schemas/song-source.schema.json",
+  "title": "VMCSongSourceMetadata",
+  "description": "Source metadata schema for one VMC song in song.json",
+  "type": "object",
+  "required": [
+    "songId",
+    "version",
+    "enabled",
+    "title",
+    "artist",
+    "bpm",
+    "genre",
+    "tags",
+    "media",
+    "charts"
+  ],
+  "properties": {
+    "songId": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647,
+      "description": "Globally unique 32-bit positive integer identifying the song"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Metadata revision number for the song"
+    },
+    "enabled": {
+      "type": "boolean",
+      "description": "Whether this song is active in the catalog"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Song display title"
+    },
+    "artist": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Song display artist"
+    },
+    "bpm": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Beats per minute"
+    },
+    "genre": {
+      "type": "string",
+      "description": "Music genre"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Search and categorization tags"
+    },
+    "media": {
+      "type": "object",
+      "required": [
+        "audio"
+      ],
+      "properties": {
+        "audio": {
+          "type": "object",
+          "required": [
+            "url"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "pattern": "^https://",
+              "description": "HTTPS URL for remote audio file"
+            }
+          },
+          "additionalProperties": false
+        },
+        "background": {
+          "type": "object",
+          "required": [
+            "type",
+            "url"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "video",
+                "image"
+              ],
+              "description": "Background media type"
+            },
+            "url": {
+              "type": "string",
+              "pattern": "^https://",
+              "description": "HTTPS URL for remote background media"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "charts": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[1-7]$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "chartId",
+          "level",
+          "designer",
+          "version"
+        ],
+        "properties": {
+          "chartId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "Globally unique 32-bit positive integer identifying the chart"
+          },
+          "level": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Display difficulty level, e.g. 13+"
+          },
+          "designer": {
+            "type": "string",
+            "description": "Name of the chart designer"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Chart revision number"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

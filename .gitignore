@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+dist/
+
+# Signing keys and secrets (NEVER COMMIT PRIVATE KEYS)
+*.pem
+*.key
+
+# OS and Editor metadata
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

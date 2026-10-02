@@ -1,0 +1,33 @@
+{
+  "catalogVersion": 1,
+  "publicBaseUrl": "https://terasgroup.github.io/VRChat_MaiSongs",
+  "pack": {
+    "packId": "example-pack",
+    "name": "Example VMC Pack",
+    "version": 1,
+    "description": "Example VMC song pack repository"
+  },
+  "limits": {
+    "maxChartBytes": 5242880,
+    "maxJacketBytes": 2097152,
+    "allowedJacketExtensions": [
+      ".webp",
+      ".png",
+      ".jpg",
+      ".jpeg"
+    ],
+    "forbiddenMediaExtensions": [
+      ".mp3",
+      ".ogg",
+      ".wav",
+      ".flac",
+      ".aac",
+      ".m4a",
+      ".mp4",
+      ".webm",
+      ".mkv",
+      ".avi",
+      ".mov"
+    ]
+  }
+}

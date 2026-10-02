@@ -1,0 +1,35 @@
+{
+  "songId": 10001,
+  "version": 1,
+  "enabled": true,
+  "title": "Example Track",
+  "artist": "Example Artist",
+  "bpm": 165,
+  "genre": "Example",
+  "tags": [
+    "example"
+  ],
+  "media": {
+    "audio": {
+      "url": "https://media.example/audio/10001.mp4"
+    },
+    "background": {
+      "type": "video",
+      "url": "https://media.example/video/10001.mp4"
+    }
+  },
+  "charts": {
+    "4": {
+      "chartId": 100014,
+      "level": "10",
+      "designer": "Example Charter",
+      "version": 1
+    },
+    "5": {
+      "chartId": 100015,
+      "level": "13+",
+      "designer": "Example Charter",
+      "version": 1
+    }
+  }
+}

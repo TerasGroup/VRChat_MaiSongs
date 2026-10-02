@@ -1,0 +1,21 @@
+{
+  "name": "vrchat-mai-songs",
+  "version": "1.0.0",
+  "description": "VMC Song Pack repository for VRChat",
+  "type": "module",
+  "scripts": {
+    "catalog": "node scripts/generate-catalog.mjs",
+    "catalog:check": "node scripts/generate-catalog.mjs --check",
+    "catalog:sign": "node scripts/sign-catalog.mjs",
+    "pages:build": "node scripts/build-pages.mjs",
+    "test": "node scripts/generate-catalog.mjs --check"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "private": true
+}
