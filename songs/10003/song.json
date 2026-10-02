@@ -1,0 +1,33 @@
+{
+  "songId": 10003,
+  "version": 1,
+  "enabled": true,
+  "title": "BOW AND ARROW",
+  "artist": "米津玄师",
+  "bpm": 180,
+  "genre": "",
+  "tags": [],
+  "media": {
+    "audio": {
+      "url": "https://raw.githubusercontent.com/TerasGroup/VRChat_MaiSongs/main/media/audio/10003.mp3"
+    },
+    "background": {
+      "type": "video",
+      "url": "https://raw.githubusercontent.com/TerasGroup/VRChat_MaiSongs/main/media/backgrounds/10003.mp4"
+    }
+  },
+  "charts": {
+    "5": {
+      "chartId": 100035,
+      "level": "13+",
+      "designer": "fullower",
+      "version": 1
+    },
+    "6": {
+      "chartId": 100036,
+      "level": "13+",
+      "designer": "fullower",
+      "version": 1
+    }
+  }
+}

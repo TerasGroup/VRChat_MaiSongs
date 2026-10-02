@@ -1,0 +1,27 @@
+{
+  "songId": 10002,
+  "version": 1,
+  "enabled": true,
+  "title": "前へススメ！",
+  "artist": "Poppin'Party",
+  "bpm": 181.01,
+  "genre": "",
+  "tags": [],
+  "media": {
+    "audio": {
+      "url": "https://raw.githubusercontent.com/TerasGroup/VRChat_MaiSongs/main/media/audio/10002.mp3"
+    },
+    "background": {
+      "type": "image",
+      "url": "https://raw.githubusercontent.com/TerasGroup/VRChat_MaiSongs/main/media/backgrounds/10002.jpg"
+    }
+  },
+  "charts": {
+    "5": {
+      "chartId": 100025,
+      "level": "13",
+      "designer": "小kai也算开",
+      "version": 1
+    }
+  }
+}
