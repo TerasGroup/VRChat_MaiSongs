@@ -11,6 +11,50 @@ function computeSha256(buffer) {
   return crypto.createHash("sha256").update(buffer).digest("hex");
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function buildIndexHtml(catalog) {
+  const pack = catalog.pack || {};
+  const title = escapeHtml(pack.name || "VMC Song Pack");
+  const description = escapeHtml(pack.description || "");
+  const songCount = Number(catalog.songCount || 0);
+  const chartCount = Number(catalog.chartCount || 0);
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${title}</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { max-width: 760px; margin: 0 auto; padding: 48px 24px; line-height: 1.55; }
+    code { padding: 0.15rem 0.35rem; border-radius: 0.3rem; background: color-mix(in srgb, currentColor 10%, transparent); }
+    a { font-weight: 600; }
+    .meta { opacity: 0.78; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>${title}</h1>
+    ${description ? `<p>${description}</p>` : ""}
+    <p class="meta">${songCount} song(s), ${chartCount} chart(s).</p>
+    <p>This GitHub Pages site publishes the machine-readable VMC song catalog and chart assets.</p>
+    <p><a href="./songs.json">Open songs.json</a></p>
+    <p><code>vmc-song-catalog/v1</code></p>
+  </main>
+</body>
+</html>
+`;
+}
+
 function copyAsset(relPath, expectedSha256) {
   const src = path.join(ROOT_DIR, relPath);
   const dest = path.join(DIST_DIR, relPath);
@@ -58,7 +102,13 @@ function main() {
   totalBytes += songsJsonBytes.length;
   fileCount++;
 
-  // 2. Copy songs.sig if present
+  // 2. Generate a lightweight landing page so the repository root does not return 404.
+  const indexHtml = buildIndexHtml(catalog);
+  fs.writeFileSync(path.join(DIST_DIR, "index.html"), indexHtml, "utf8");
+  totalBytes += Buffer.byteLength(indexHtml, "utf8");
+  fileCount++;
+
+  // 3. Copy songs.sig if present
   if (fs.existsSync(SONGS_SIG_PATH)) {
     const sigBytes = fs.readFileSync(SONGS_SIG_PATH);
     fs.writeFileSync(path.join(DIST_DIR, "songs.sig"), sigBytes);
@@ -67,7 +117,7 @@ function main() {
     console.log("Included songs.sig in distribution.");
   }
 
-  // 3. Copy referenced jacket and chart assets only
+  // 4. Copy referenced jacket and chart assets only
   for (const song of catalog.songs || []) {
     if (song.jacket?.path) {
       const bytes = copyAsset(song.jacket.path, song.jacket.sha256);
