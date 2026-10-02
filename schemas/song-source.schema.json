@@ -66,12 +66,18 @@
         "audio": {
           "type": "object",
           "required": [
-            "url"
+            "url",
+            "path"
           ],
           "properties": {
             "url": {
               "type": "string",
               "pattern": "^https://"
+            },
+            "path": {
+              "type": "string",
+              "pattern": "^(?!/)(?!.*\\.\\.)[^\\\\]+$",
+              "description": "Repository-relative source path copied to the fixed runtime slot during Pages build"
             }
           },
           "additionalProperties": false
@@ -80,7 +86,8 @@
           "type": "object",
           "required": [
             "type",
-            "url"
+            "url",
+            "path"
           ],
           "properties": {
             "type": {
@@ -93,6 +100,11 @@
             "url": {
               "type": "string",
               "pattern": "^https://"
+            },
+            "path": {
+              "type": "string",
+              "pattern": "^(?!/)(?!.*\\.\\.)[^\\\\]+$",
+              "description": "Repository-relative source path copied to the fixed runtime slot during Pages build"
             }
           },
           "additionalProperties": false
