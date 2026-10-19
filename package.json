@@ -8,8 +8,9 @@
     "catalog:check": "node scripts/generate-catalog.mjs --check",
     "catalog:sign": "node scripts/sign-catalog.mjs",
     "pages:build": "node scripts/build-pages.mjs",
-    "test": "node scripts/generate-catalog.mjs --check",
-    "audio:preload": "node scripts/prepare-preload-audio.mjs"
+    "test": "node --test scripts/preload-audio.test.mjs && node scripts/generate-catalog.mjs --check",
+    "audio:preload": "node scripts/prepare-preload-audio.mjs",
+    "verify:public": "node scripts/verify-public-preload.mjs"
   },
   "devDependencies": {
     "ajv": "^8.17.1",

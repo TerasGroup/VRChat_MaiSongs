@@ -28,3 +28,6 @@ jobs:
 
       - name: Build runtime-slot Pages artifact
         run: npm run pages:build
+
+      - name: Test complete-audio validation
+        run: node --test scripts/preload-audio.test.mjs
