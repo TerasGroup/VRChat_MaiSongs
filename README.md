@@ -1,4 +1,13 @@
-# VMC Song Pack Repository v2
+# VMC Song Pack Repository
+
+## Complete audio preload for the cabinet
+
+Run `npm run audio:preload` after adding or changing music (FFmpeg is required), then regenerate the catalog. This creates a float32 PCM WAV under `media/preload/`, preserving the source sample rate, channels, decoded leading silence and duration. A song must be mono or stereo and the complete file must not exceed 96,000,000 bytes.
+
+`media.audio.preload` in catalog v2 identifies the fixed `runtime/{slot}/audio.wav` slot, complete byte length, sample rate, channels, sample frames and publication SHA-256. The older compressed audio field remains available to existing clients. The Pages build verifies the WAV and copies it alongside that older file. The strict-preload cabinet does not fall back to AVPro music when preload data is missing or invalid.
+
+Download completion and WAV/sample validation gate local `AudioClip` creation; readiness is published only after every sample has been copied. Music playback then uses the local clip. Video backgrounds still use AVPro. Downloading a whole song increases bandwidth and peak memory compared with compressed streaming.
+ v2
 
 This repository is the version-controlled source of truth for VRChat maimai song metadata, VMC charts, and test media.
 

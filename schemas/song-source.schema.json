@@ -78,6 +78,19 @@
               "type": "string",
               "pattern": "^(?!/)(?!.*\\.\\.)[^\\\\]+$",
               "description": "Repository-relative source path copied to the fixed runtime slot during Pages build"
+            },
+            "preload": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "pattern": "^(?!/)(?!.*\\.\\.)[^\\\\]+$"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false

@@ -10,7 +10,10 @@
   "media": {
     "audio": {
       "url": "https://raw.githubusercontent.com/TerasGroup/VRChat_MaiSongs/main/media/audio/10003.mp3",
-      "path": "media/audio/10003.mp3"
+      "path": "media/audio/10003.mp3",
+      "preload": {
+        "path": "media/preload/10003.wav"
+      }
     },
     "background": {
       "type": "video",

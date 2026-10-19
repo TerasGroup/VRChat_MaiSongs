@@ -210,6 +210,55 @@
                   },
                   "extension": {
                     "type": "string"
+                  },
+                  "preload": {
+                    "type": "object",
+                    "required": [
+                      "variant",
+                      "extension",
+                      "encoding",
+                      "bytes",
+                      "sampleRate",
+                      "channels",
+                      "sampleFrames",
+                      "sha256"
+                    ],
+                    "properties": {
+                      "variant": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "extension": {
+                        "const": ".wav"
+                      },
+                      "encoding": {
+                        "const": "pcm-f32le"
+                      },
+                      "bytes": {
+                        "type": "integer",
+                        "minimum": 44,
+                        "maximum": 96000000
+                      },
+                      "sampleRate": {
+                        "type": "integer",
+                        "minimum": 8000,
+                        "maximum": 192000
+                      },
+                      "channels": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 2
+                      },
+                      "sampleFrames": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      }
+                    },
+                    "additionalProperties": false
                   }
                 },
                 "additionalProperties": false
@@ -290,6 +339,25 @@
                 "version": {
                   "type": "integer",
                   "minimum": 1
+                },
+                "format": {
+                  "type": "string",
+                  "enum": [
+                    "VMC1",
+                    "VMC2"
+                  ],
+                  "default": "VMC1"
+                },
+                "capabilities": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "sensor-queue-v2",
+                      "mine"
+                    ]
+                  }
                 }
               },
               "additionalProperties": false

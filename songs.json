@@ -67,7 +67,17 @@
       "media": {
         "audio": {
           "variant": 0,
-          "extension": ".mp3"
+          "extension": ".mp3",
+          "preload": {
+            "variant": 2,
+            "extension": ".wav",
+            "encoding": "pcm-f32le",
+            "bytes": 53615276,
+            "sampleRate": 48000,
+            "channels": 2,
+            "sampleFrames": 6701904,
+            "sha256": "c107b98e096471c8ed2de9963b743868689096e8b1109b3431ad0b507fc5205e"
+          }
         },
         "background": {
           "type": "image",
@@ -102,7 +112,17 @@
       "media": {
         "audio": {
           "variant": 0,
-          "extension": ".mp3"
+          "extension": ".mp3",
+          "preload": {
+            "variant": 2,
+            "extension": ".wav",
+            "encoding": "pcm-f32le",
+            "bytes": 51847212,
+            "sampleRate": 48000,
+            "channels": 2,
+            "sampleFrames": 6480896,
+            "sha256": "bbc1f1959b694d18833d9211ef80828d122db9a22b30821395256bb79d9f3b63"
+          }
         },
         "background": {
           "type": "image",
@@ -137,7 +157,17 @@
       "media": {
         "audio": {
           "variant": 0,
-          "extension": ".mp3"
+          "extension": ".mp3",
+          "preload": {
+            "variant": 2,
+            "extension": ".wav",
+            "encoding": "pcm-f32le",
+            "bytes": 32532524,
+            "sampleRate": 44100,
+            "channels": 2,
+            "sampleFrames": 4066560,
+            "sha256": "7210a71934ec339edf3b60661302aaa67b2cf38ce8aee0c07614a76f6aa29e6b"
+          }
         },
         "background": {
           "type": "video",
@@ -167,5 +197,5 @@
       ]
     }
   ],
-  "catalogSha256": "763877c24e6e7d99382382df92462af2f9c61eced88927f125b7bcbf48de08d0"
+  "catalogSha256": "f1eef48d475eec7d58a8c4be8c56ebc7d39851370a299bc41111860536cf76ec"
 }

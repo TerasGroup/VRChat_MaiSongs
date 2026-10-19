@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { inspectPcmWav } from './lib/preload-audio.mjs';
 
 const ROOT_DIR = process.cwd();
 const DIST_DIR = path.join(ROOT_DIR, "dist");
@@ -142,6 +143,14 @@ function main() {
     const audioDest = `${runtimeRoot}/audio${song.media.audio.extension}`;
     totalBytes += copyAsset(audioSource, audioDest);
     fileCount++;
+    if (song.media.audio.preload) {
+      const preloadSource = sourceSong.media.audio.preload.path;
+      const actual = inspectPcmWav(safeSource(preloadSource));
+      if (actual.sha256 !== song.media.audio.preload.sha256 || actual.bytes !== song.media.audio.preload.bytes) throw new Error(`Stale complete audio metadata: ${song.songId}`);
+      const preloadDest = `${runtimeRoot}/audio.wav`;
+      if (preloadDest === audioDest && actual.sha256 !== computeSha256(fs.readFileSync(safeSource(audioSource)))) throw new Error('Legacy WAV and complete WAV collide');
+      totalBytes += copyAsset(preloadSource, preloadDest);fileCount++;
+    }
 
     if (song.media.background) {
       const backgroundSource = sourceSong.media?.background?.path;

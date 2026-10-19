@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { inspectPcmWav } from './lib/preload-audio.mjs';
 import path from "node:path";
 import crypto from "node:crypto";
 
@@ -247,6 +248,11 @@ async function main() {
     const audioFull = requireFile(audioPath, `Song ${songData.songId} audio path`);
     const audioExt = path.extname(audioFull).toLowerCase();
     const audioVariant = variantFor(audioExt, audioExtensions, `Song ${songData.songId} audio`);
+    if (songData.media.audio.preload) {
+      const preloadFull = requireFile(songData.media.audio.preload.path, `Song ${songData.songId} preload path`);
+      if (path.extname(preloadFull).toLowerCase() !== '.wav') throw new Error('Complete audio must use the registered WAV slot');
+      audioVariant.preload = { ...variantFor('.wav', audioExtensions, 'Complete audio'), ...inspectPcmWav(preloadFull) };
+    }
 
     let backgroundCatalog;
     if (songData.media?.background) {
